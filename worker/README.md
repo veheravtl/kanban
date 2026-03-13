@@ -2,6 +2,10 @@
 
 External Python worker for Kanboard that converts Office task attachments to PDF asynchronously.
 
+For the first-stage assignee notification pipeline, see the separate component:
+
+- `worker/bot_service/README.md`
+
 ## Behavior
 
 1. Claims `pending` row from SQLite queue (`conversion_queue`) and sets it to `processing` atomically.
