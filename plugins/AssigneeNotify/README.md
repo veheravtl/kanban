@@ -11,6 +11,7 @@ Kanboard plugin that tracks real assignee changes and forwards minimal events to
 - sends HTTP POST to bot-service with shared token (`X-Webhook-Token`)
 - saves delivery result (`sent`, `failed`, `skipped`)
 - does not break task save when bot-service is unavailable
+- adds admin page in Settings for Telegram bindings management
 
 ## Install
 
@@ -66,3 +67,31 @@ Main table:
 - No task title/description/project metadata is sent.
 - `unchanged` and `both_null` events are ignored (no delivery).
 - `old=user, new=null` is recorded as `skipped` and not delivered.
+
+## Settings UI (admin)
+
+After plugin is enabled, open:
+
+- `Settings` -> `Telegram bindings`
+
+Features:
+
+- view current `kanboard_user_id -> telegram_chat_id` mappings
+- create/update mapping per user
+- unbind (set inactive)
+- send test message through bot-service API
+- review stale bindings (inactive/deleted users)
+- deactivate all stale bindings in one action
+
+## Self-service UI (user)
+
+Current user can open profile page:
+
+- `User profile` -> `Telegram binding`
+
+Features:
+
+- generate one-time bind code
+- send `/bind <code>` to Telegram bot
+- run test message
+- unbind remains admin-only

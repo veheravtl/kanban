@@ -10,6 +10,7 @@ from config import ConfigError, load_settings
 from http_server import build_handler
 from logging_setup import configure_logging
 from storage import BotServiceDB
+from telegram_binding import TelegramBindingPoller
 from telegram_sender import TelegramSender
 
 
@@ -58,6 +59,22 @@ def run() -> int:
     # Prevent indefinite block in handle_request so stop signals are handled promptly.
     server.timeout = 1
 
+    binding_poller_thread: threading.Thread | None = None
+    if settings.enable_telegram_binding_poll:
+        poller = TelegramBindingPoller(
+            settings=settings,
+            storage=storage,
+            telegram_sender=app.telegram_sender,
+            logger=LOGGER,
+        )
+        binding_poller_thread = threading.Thread(
+            target=poller.run,
+            args=(STOP_EVENT,),
+            daemon=True,
+            name="telegram-bind-poller",
+        )
+        binding_poller_thread.start()
+
     signal.signal(signal.SIGTERM, _handle_stop_signal)
     signal.signal(signal.SIGINT, _handle_stop_signal)
 
@@ -69,7 +86,10 @@ def run() -> int:
         while not STOP_EVENT.is_set():
             server.handle_request()
     finally:
+        STOP_EVENT.set()
         server.server_close()
+        if binding_poller_thread is not None:
+            binding_poller_thread.join(timeout=2)
 
     LOGGER.info("Bot-service stopped")
     return 0

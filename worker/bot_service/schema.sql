@@ -24,3 +24,18 @@ CREATE INDEX IF NOT EXISTS idx_delivery_log_event_id
 
 CREATE INDEX IF NOT EXISTS idx_delivery_log_status_created
     ON delivery_log(send_status, created_at);
+
+CREATE TABLE IF NOT EXISTS binding_tokens (
+    token TEXT PRIMARY KEY,
+    kanboard_user_id INTEGER NOT NULL,
+    is_used INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_binding_tokens_user
+    ON binding_tokens(kanboard_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_binding_tokens_expires
+    ON binding_tokens(expires_at);
