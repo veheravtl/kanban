@@ -10,6 +10,8 @@ Minimal HTTP service that receives assignee-change events from Kanboard plugin a
 4. Looks up `kanboard_user_id -> telegram_chat_id` in `user_bindings`.
 5. If mapping missing: writes `delivery_log` with `unmapped`, returns JSON status.
 6. If mapping exists: sends fixed Telegram message, writes `delivery_log`.
+7. Provides admin API to list/update/unbind/test `user_bindings`.
+8. Polls Telegram updates and processes `/bind <code>` self-binding command.
 
 ## Storage
 
@@ -61,12 +63,15 @@ See full list in `.env.example`.
 
 ## API contract
 
+All endpoints require header:
+
+- `X-Webhook-Token: <shared secret>`
+
 ### Request
 
 Headers:
 
 - `Content-Type: application/json`
-- `X-Webhook-Token: <shared secret>`
 
 Body:
 
@@ -114,6 +119,123 @@ Telegram failure (`502`):
 {"ok": false, "status": "telegram_error"}
 ```
 
+## Bindings API (admin)
+
+### `GET /api/v1/bindings`
+
+Optional query param:
+
+- `kanboard_user_id=<id>`
+
+Response (`200`):
+
+```json
+{
+  "ok": true,
+  "status": "ok",
+  "data": {
+    "bindings": [
+      {
+        "id": 1,
+        "kanboard_user_id": 2,
+        "telegram_chat_id": "506566433",
+        "is_active": true,
+        "created_at": "2026-03-13T18:00:00+00:00",
+        "updated_at": "2026-03-13T18:00:00+00:00"
+      }
+    ]
+  }
+}
+```
+
+### `POST /api/v1/bindings/upsert`
+
+Body:
+
+```json
+{
+  "kanboard_user_id": 2,
+  "telegram_chat_id": "506566433",
+  "is_active": true
+}
+```
+
+Response (`200`): `{"ok": true, "status": "upserted", ...}`
+
+Conflict (`409`) when `telegram_chat_id` is already active for another user:
+
+```json
+{
+  "ok": false,
+  "status": "chat_already_bound",
+  "error": "telegram_chat_id already bound to kanboard_user_id=2",
+  "data": {
+    "telegram_chat_id": "506566433",
+    "conflicting_user_id": 2
+  }
+}
+```
+
+### `POST /api/v1/bindings/unbind`
+
+Body:
+
+```json
+{
+  "kanboard_user_id": 2
+}
+```
+
+Response (`200`): `{"ok": true, "status": "unbound", ...}`
+
+### `POST /api/v1/bindings/test`
+
+Body:
+
+```json
+{
+  "kanboard_user_id": 2
+}
+```
+
+Response:
+
+- delivered (`200`): `{"ok": true, "status": "delivered"}`
+- unmapped (`200`): `{"ok": false, "status": "unmapped"}`
+- telegram error (`502`): `{"ok": false, "status": "telegram_error"}`
+
+### `POST /api/v1/bindings/token/create`
+
+Body:
+
+```json
+{
+  "kanboard_user_id": 2
+}
+```
+
+Response (`200`):
+
+```json
+{
+  "ok": true,
+  "status": "created",
+  "data": {
+    "code": "ABCD2345",
+    "kanboard_user_id": 2,
+    "expires_at": "2026-03-14T09:00:00+00:00"
+  }
+}
+```
+
+Use this code in Telegram:
+
+```text
+/bind ABCD2345
+```
+
+If the chat is already linked to another Kanboard user, `/bind` is rejected and bot replies with a conflict message.
+
 ## Manual test
 
 1. Add mapping:
@@ -140,10 +262,9 @@ sqlite3 /var/www/kanboard/data/kanboard_bot_service.sqlite "SELECT id,event_id,k
 
 ## Current limitations
 
-- user bindings are manual
+- no background retry queue (direct send)
 - single hardcoded Telegram message text
-- direct send (no queue/retry scheduler)
-- no web UI
+- one-chat-per-user binding model
 
 ## systemd unit example
 

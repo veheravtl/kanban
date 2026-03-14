@@ -24,6 +24,10 @@ class Settings:
     max_body_bytes: int
     log_file: Path
     log_level: str
+    enable_telegram_binding_poll: bool
+    telegram_poll_timeout_sec: int
+    binding_token_ttl_sec: int
+    binding_token_length: int
 
 
 
@@ -73,6 +77,20 @@ def _env_int(name: str, default: int) -> int:
     return value
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+
+    normalized = raw.strip().lower()
+    if normalized in ("1", "true", "yes", "on"):
+        return True
+    if normalized in ("0", "false", "no", "off"):
+        return False
+
+    raise ConfigError(f"Invalid boolean for {name}: {raw}")
+
+
 
 def load_settings() -> Settings:
     component_dir = Path(__file__).resolve().parent
@@ -112,4 +130,8 @@ def load_settings() -> Settings:
         max_body_bytes=_env_int("BOT_SERVICE_MAX_BODY_BYTES", default=32768),
         log_file=log_file,
         log_level=_env_str("BOT_SERVICE_LOG_LEVEL", default="INFO"),
+        enable_telegram_binding_poll=_env_bool("BOT_SERVICE_ENABLE_TELEGRAM_BIND_POLL", default=True),
+        telegram_poll_timeout_sec=_env_int("BOT_SERVICE_TELEGRAM_POLL_TIMEOUT_SEC", default=20),
+        binding_token_ttl_sec=_env_int("BOT_SERVICE_BINDING_TOKEN_TTL_SEC", default=900),
+        binding_token_length=_env_int("BOT_SERVICE_BINDING_TOKEN_LENGTH", default=8),
     )

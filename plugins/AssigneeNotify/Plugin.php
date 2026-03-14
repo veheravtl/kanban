@@ -6,6 +6,7 @@ require_once __DIR__ . '/Service/Config.php';
 require_once __DIR__ . '/Service/EventPayloadExtractor.php';
 require_once __DIR__ . '/Service/AssigneeChangeComparator.php';
 require_once __DIR__ . '/Service/BotServiceClient.php';
+require_once __DIR__ . '/Service/BotServiceBindingsClient.php';
 require_once __DIR__ . '/Service/AssigneeChangeHandler.php';
 require_once __DIR__ . '/Service/SubtaskAssigneeChangeHook.php';
 require_once __DIR__ . '/Model/NotificationEventStore.php';
@@ -64,9 +65,11 @@ class Plugin extends Base
             }
 
             $this->hook->on('model:subtask:modification:prepare', array($subtaskHook, 'handle'));
+            $this->template->hook->attach('template:config:sidebar', 'assigneeNotify:config/sidebar');
+            $this->template->hook->attach('template:user:sidebar:actions', 'assigneeNotify:user/sidebar');
 
             $this->container['logger']->info(sprintf(
-                '[AssigneeNotify] Initialized. Listening on events: %s; hook: model:subtask:modification:prepare',
+                '[AssigneeNotify] Initialized. Listening on events: %s; hooks: model:subtask:modification:prepare, template:config:sidebar, template:user:sidebar:actions',
                 implode(', ', $events)
             ));
         } catch (Throwable $e) {
